@@ -140,7 +140,7 @@ function selectClient(id) {
   persist();
   renderAll();
   nav('hoje', document.querySelectorAll('.nav-tab')[0]);
-  toast('Cliente selecionada!', 'green');
+  toast('Aluno(a) selecionado(a)!', 'green');
 }
 
 // ============================================================
@@ -258,7 +258,7 @@ function renderTracker() {
 function renderHist() {
   const sel  = document.getElementById('h-filter');
   const curV = sel.value;
-  sel.innerHTML = '<option value="">Todas as clientes</option>';
+  sel.innerHTML = '<option value="">Todos os alunos(as)</option>';
   ST.clients.forEach(c => {
     const o = document.createElement('option');
     o.value = c.id; o.textContent = c.name; sel.appendChild(o);
@@ -305,7 +305,7 @@ function renderHist() {
 function renderClients() {
   const list = document.getElementById('clients-list');
   if (!ST.clients.length) {
-    list.innerHTML = `<div class="empty"><div class="empty-icon">👩</div><p>Nenhuma cliente cadastrada.<br>Toque em <strong style="color:var(--rcf-red)">+ Cliente</strong> para começar.</p></div>`;
+    list.innerHTML = `<div class="empty"><div class="empty-icon">👩</div><p>Nenhum(a) aluno(a) cadastrado(a).<br>Toque em <strong style="color:var(--rcf-red)">+ Aluno(a)</strong> para começar.</p></div>`;
     return;
   }
   list.innerHTML = ST.clients.map(c => {
@@ -316,7 +316,7 @@ function renderClients() {
       <div class="client-info">
         <div class="client-name-text">${c.name}</div>
         <div class="client-sub">${c.weight}kg · Meta: ${Math.round(c.weight * 35).toLocaleString('pt-BR')}ml/dia</div>
-        ${isActive ? `<div style="font-size:10px;margin-top:3px;color:var(--rcf-red)"><span class="active-dot"></span>Selecionada</div>` : ''}
+        ${isActive ? `<div style="font-size:10px;margin-top:3px;color:var(--rcf-red)"><span class="active-dot"></span>Selecionado(a)</div>` : ''}
       </div>
       <div class="client-right">
         <div class="client-streak">${days}<small>metas atingidas</small></div>
@@ -367,7 +367,7 @@ function openHistDetail(h) {
 // ============================================================
 function openNewClient() {
   openSheet(`
-    <div class="sheet-title">Nova Cliente</div>
+    <div class="sheet-title">Novo(a) Aluno(a)</div>
     <label>Nome completo</label>
     <input type="text" id="nc-name" placeholder="Ex: Ana Carolina Silva" autocomplete="off">
     <label>Peso atual (kg)</label>
@@ -408,7 +408,7 @@ function saveClient() {
   persist();
   closeSheet();
   renderClients();
-  toast('Cliente cadastrada! ✓', 'green');
+  toast('Aluno(a) cadastrado(a)! ✓', 'green');
 }
 
 // ============================================================

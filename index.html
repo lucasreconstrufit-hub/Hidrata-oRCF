@@ -42,14 +42,14 @@
     <div class="brand-name">Método RCF</div>
     <div class="brand-sub">Hidratação Ativa</div>
   </div>
-  <button class="btn-add-client" onclick="openNewClient()">+ Cliente</button>
+  <button class="btn-add-client" onclick="openNewClient()">+ Aluno(a)</button>
 </div>
 
 <!-- TABS -->
 <div class="nav-tabs">
   <button class="nav-tab active" onclick="nav('hoje', this)">Hoje</button>
   <button class="nav-tab" onclick="nav('historico', this)">Histórico</button>
-  <button class="nav-tab" onclick="nav('clientes', this)">Clientes</button>
+  <button class="nav-tab" onclick="nav('clientes', this)">Alunos(as)</button>
   <button class="nav-tab" onclick="nav('config', this)">Info</button>
 </div>
 
@@ -58,8 +58,8 @@
   <div id="no-client">
     <div class="empty">
       <div class="empty-icon">💧</div>
-      <p>Selecione uma cliente na aba <strong style="color:var(--rcf-red)">Clientes</strong> para iniciar o acompanhamento de hoje.</p>
-      <button class="btn-primary" style="margin-top:20px;max-width:200px;" onclick="nav('clientes', document.querySelectorAll('.nav-tab')[2])">Ver Clientes</button>
+      <p>Selecione um(a) aluno(a) na aba <strong style="color:var(--rcf-red)">Alunos(as)</strong> para iniciar o acompanhamento de hoje.</p>
+      <button class="btn-primary" style="margin-top:20px;max-width:200px;" onclick="nav('clientes', document.querySelectorAll('.nav-tab')[2])">Ver Alunos(as)</button>
     </div>
   </div>
   <div id="tracker" style="display:none">
@@ -95,7 +95,7 @@
 <div class="page" id="page-historico">
   <div class="hist-filter">
     <select id="h-filter" onchange="renderHist()">
-      <option value="">Todas as clientes</option>
+      <option value="">Todos os alunos(as)</option>
     </select>
   </div>
   <div id="hist-list"></div>
@@ -151,7 +151,7 @@
     <div class="card-title">Sobre</div>
     <p style="font-size:13px;color:var(--rcf-muted);line-height:1.7">
       Aplicativo exclusivo da consultoria <strong style="color:var(--rcf-white)">Reconstrução do Corpo Feminino — Método RCF</strong>.<br><br>
-      Acompanhamento ativo de hidratação com metas personalizadas por peso, divisão em turnos e histórico individual por cliente.
+      Acompanhamento ativo de hidratação com metas personalizadas por peso, divisão em turnos e histórico individual por aluno(a).
     </p>
   </div>
   <div class="card" id="install-card" style="display:none">
