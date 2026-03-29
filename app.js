@@ -258,7 +258,7 @@ function renderTracker() {
 function renderHist() {
   const sel  = document.getElementById('h-filter');
   const curV = sel.value;
-  sel.innerHTML = '<option value="">Todos os alunos(as)</option>';
+  sel.innerHTML = '<option value="">Todas as alunos(as)</option>';
   ST.clients.forEach(c => {
     const o = document.createElement('option');
     o.value = c.id; o.textContent = c.name; sel.appendChild(o);
