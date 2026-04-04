@@ -30,42 +30,64 @@
   </div>
 </div>
 
-<!-- HEADER -->
-<div class="app-header">
-  <svg class="logo-mark" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-    <rect width="80" height="80" fill="#0A0A0A" rx="10"/>
-    <path d="M14 62 L24 18 L66 18 L56 62 Z" fill="none" stroke="#CC0000" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M14 62 L24 18" fill="none" stroke="#CC0000" stroke-width="7" stroke-linecap="round"/>
-    <path d="M66 18 L56 62" fill="none" stroke="#CC0000" stroke-width="7" stroke-linecap="round"/>
-  </svg>
-  <div class="brand-text">
-    <div class="brand-name">Método RCF</div>
-    <div class="brand-sub">Hidratação Ativa</div>
-  </div>
-  <button class="btn-add-client" onclick="openNewClient()">+ Aluno(a)</button>
-</div>
-
-<!-- TABS -->
-<div class="nav-tabs">
-  <button class="nav-tab active" onclick="nav('hoje', this)">Hoje</button>
-  <button class="nav-tab" onclick="nav('historico', this)">Histórico</button>
-  <button class="nav-tab" onclick="nav('clientes', this)">Alunos(as)</button>
-  <button class="nav-tab" onclick="nav('config', this)">Info</button>
-</div>
-
-<!-- PAGE: HOJE -->
-<div class="page active" id="page-hoje">
-  <div id="no-client">
-    <div class="empty">
-      <div class="empty-icon">💧</div>
-      <p>Selecione um(a) aluno(a) na aba <strong style="color:var(--rcf-red)">Alunos(as)</strong> para iniciar o acompanhamento de hoje.</p>
-      <button class="btn-primary" style="margin-top:20px;max-width:200px;" onclick="nav('clientes', document.querySelectorAll('.nav-tab')[2])">Ver Alunos(as)</button>
+<!-- ===== ONBOARDING (first time) ===== -->
+<div id="onboarding">
+  <div class="onboarding-inner">
+    <svg class="ob-logo" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+      <rect width="80" height="80" fill="#0A0A0A" rx="14"/>
+      <path d="M14 62 L24 18 L66 18 L56 62 Z" fill="none" stroke="#CC0000" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M14 62 L24 18" fill="none" stroke="#CC0000" stroke-width="7" stroke-linecap="round"/>
+      <path d="M66 18 L56 62" fill="none" stroke="#CC0000" stroke-width="7" stroke-linecap="round"/>
+    </svg>
+    <div class="ob-brand">Método RCF</div>
+    <div class="ob-sub">Hidratação Ativa</div>
+    <div class="ob-title">Bem-vinda! 👋</div>
+    <p class="ob-desc">Vamos configurar sua meta de hidratação personalizada com base no seu peso.</p>
+    <div class="ob-form">
+      <label>Seu nome</label>
+      <input type="text" id="ob-name" placeholder="Ex: Ana Carolina" autocomplete="given-name" autocapitalize="words">
+      <label>Seu peso atual (kg)</label>
+      <input type="number" id="ob-weight" placeholder="Ex: 65" min="30" max="250" oninput="obPreview()">
+      <div class="meta-preview" id="ob-preview">
+        <span class="meta-preview-label">Sua meta diária</span>
+        <span class="meta-preview-val" id="ob-preview-val">—</span>
+      </div>
+      <p class="ob-formula">Baseado na fórmula SBME: <strong>35ml × kg</strong></p>
+      <button class="btn-primary" onclick="obSave()">Começar 💧</button>
     </div>
   </div>
-  <div id="tracker" style="display:none">
+</div>
+
+<!-- ===== APP (after onboarding) ===== -->
+<div id="app" style="display:none">
+
+  <!-- HEADER -->
+  <div class="app-header">
+    <svg class="logo-mark" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+      <rect width="80" height="80" fill="#0A0A0A" rx="10"/>
+      <path d="M14 62 L24 18 L66 18 L56 62 Z" fill="none" stroke="#CC0000" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M14 62 L24 18" fill="none" stroke="#CC0000" stroke-width="7" stroke-linecap="round"/>
+      <path d="M66 18 L56 62" fill="none" stroke="#CC0000" stroke-width="7" stroke-linecap="round"/>
+    </svg>
+    <div class="brand-text">
+      <div class="brand-name">Método RCF</div>
+      <div class="brand-sub" id="header-greeting">Hidratação Ativa</div>
+    </div>
+    <div class="header-meta" id="header-meta"></div>
+  </div>
+
+  <!-- TABS -->
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="nav('hoje', this)">Hoje</button>
+    <button class="nav-tab" onclick="nav('historico', this)">Histórico</button>
+    <button class="nav-tab" onclick="nav('perfil', this)">Perfil</button>
+  </div>
+
+  <!-- PAGE: HOJE -->
+  <div class="page active" id="page-hoje">
     <div class="date-bar">
       <span class="date-text" id="today-label"></span>
-      <span class="client-chip" id="active-chip"></span>
+      <span class="day-streak" id="day-streak"></span>
     </div>
     <div id="alert-box"></div>
     <div class="progress-card">
@@ -84,82 +106,75 @@
       <div class="progress-info">
         <div class="progress-big"><span id="p-total">0</span><span class="unit">ml</span></div>
         <div class="progress-row">Meta diária: <strong id="p-meta">—</strong></div>
-        <div class="progress-row" id="p-faltam-row">Faltam: <strong id="p-faltam">—</strong></div>
+        <div class="progress-row">Faltam: <strong id="p-faltam">—</strong></div>
       </div>
     </div>
     <div id="turnos"></div>
   </div>
-</div>
 
-<!-- PAGE: HISTORICO -->
-<div class="page" id="page-historico">
-  <div class="hist-filter">
-    <select id="h-filter" onchange="renderHist()">
-      <option value="">Todas as alunos(as)</option>
-    </select>
+  <!-- PAGE: HISTORICO -->
+  <div class="page" id="page-historico">
+    <div class="hist-summary" id="hist-summary"></div>
+    <div id="hist-list"></div>
   </div>
-  <div id="hist-list"></div>
-</div>
 
-<!-- PAGE: CLIENTES -->
-<div class="page" id="page-clientes">
-  <div id="clients-list"></div>
-</div>
-
-<!-- PAGE: CONFIG -->
-<div class="page" id="page-config">
-  <div class="card">
-    <div class="card-title">Fórmula SBME</div>
-    <div class="info-row">
-      <span class="info-icon">🔬</span>
-      <div>
-        <div class="info-label">Referência científica</div>
-        Sociedade Brasileira de Medicina do Exercício — <strong style="color:var(--rcf-red)">35ml por kg</strong> de peso corporal ao dia.
+  <!-- PAGE: PERFIL -->
+  <div class="page" id="page-perfil">
+    <div class="card">
+      <div class="card-title">Meus Dados</div>
+      <div class="perfil-row">
+        <div class="perfil-avatar" id="perfil-avatar"></div>
+        <div>
+          <div class="perfil-name" id="perfil-name"></div>
+          <div class="perfil-sub" id="perfil-sub"></div>
+        </div>
+      </div>
+      <button class="btn-secondary" style="margin-top:14px" onclick="openEditPerfil()">✎ Editar nome / peso</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Metas por Turno</div>
+      <div class="info-row">
+        <span class="info-icon">🌅</span>
+        <div><div class="info-label">Manhã — 6h às 12h</div><strong>40%</strong> da meta diária</div>
+      </div>
+      <div class="info-row">
+        <span class="info-icon">☀️</span>
+        <div><div class="info-label">Tarde — 12h às 18h</div><strong>40%</strong> da meta diária</div>
+      </div>
+      <div class="info-row">
+        <span class="info-icon">🌙</span>
+        <div><div class="info-label">Noite — 18h às 23h</div><strong>20%</strong> da meta diária</div>
       </div>
     </div>
-    <div class="info-row">
-      <span class="info-icon">🌅</span>
-      <div><div class="info-label">Manhã — 6h às 12h</div><strong>40%</strong> da meta diária</div>
+    <div class="card">
+      <div class="card-title">Fórmula SBME</div>
+      <p style="font-size:13px;color:var(--rcf-muted);line-height:1.7">
+        Meta calculada pela <strong style="color:var(--rcf-white)">Sociedade Brasileira de Medicina do Exercício</strong>:
+        <strong style="color:var(--rcf-red)">35ml × seu peso em kg</strong> por dia.
+      </p>
     </div>
-    <div class="info-row">
-      <span class="info-icon">☀️</span>
-      <div><div class="info-label">Tarde — 12h às 18h</div><strong>40%</strong> da meta diária</div>
-    </div>
-    <div class="info-row">
-      <span class="info-icon">🌙</span>
-      <div><div class="info-label">Noite — 18h às 23h</div><strong>20%</strong> da meta diária</div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">Instalação do App</div>
-    <div class="info-row">
-      <span class="info-icon">📱</span>
-      <div>
-        <div class="info-label">iPhone / Safari</div>
-        Toque em <strong>Compartilhar</strong> → <strong>Adicionar à Tela de Início</strong>
+    <div class="card">
+      <div class="card-title">Instalação do App</div>
+      <div class="info-row">
+        <span class="info-icon">📱</span>
+        <div><div class="info-label">iPhone / Safari</div>Toque em <strong>Compartilhar</strong> → <strong>Adicionar à Tela de Início</strong></div>
+      </div>
+      <div class="info-row">
+        <span class="info-icon">🤖</span>
+        <div><div class="info-label">Android / Chrome</div>Toque nos <strong>3 pontos</strong> → <strong>Instalar app</strong></div>
       </div>
     </div>
-    <div class="info-row">
-      <span class="info-icon">🤖</span>
-      <div>
-        <div class="info-label">Android / Chrome</div>
-        Toque nos <strong>3 pontos</strong> → <strong>Instalar app</strong> ou <strong>Adicionar à tela inicial</strong>
-      </div>
+    <div class="card" id="install-card" style="display:none">
+      <div class="card-title">Instalar App</div>
+      <p style="font-size:13px;color:var(--rcf-muted);margin-bottom:12px">Instale para acessar direto da tela inicial.</p>
+      <button class="btn-primary" onclick="installPWA()">📲 Instalar no Celular</button>
+    </div>
+    <div style="padding:8px 0 4px">
+      <button class="btn-secondary" onclick="confirmReset()" style="border-color:rgba(204,0,0,0.3);color:var(--rcf-red)">Resetar todos os dados</button>
     </div>
   </div>
-  <div class="card">
-    <div class="card-title">Sobre</div>
-    <p style="font-size:13px;color:var(--rcf-muted);line-height:1.7">
-      Aplicativo exclusivo da consultoria <strong style="color:var(--rcf-white)">Reconstrução do Corpo Feminino — Método RCF</strong>.<br><br>
-      Acompanhamento ativo de hidratação com metas personalizadas por peso, divisão em turnos e histórico individual por aluno(a).
-    </p>
-  </div>
-  <div class="card" id="install-card" style="display:none">
-    <div class="card-title">Instalar App</div>
-    <p style="font-size:13px;color:var(--rcf-muted);margin-bottom:12px">Instale para acessar direto da tela inicial, sem abrir o navegador.</p>
-    <button class="btn-primary" id="install-btn" onclick="installPWA()">📲 Instalar no Celular</button>
-  </div>
-</div>
+
+</div><!-- /#app -->
 
 <script src="app.js"></script>
 </body>

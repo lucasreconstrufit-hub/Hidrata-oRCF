@@ -1,123 +1,61 @@
 # 💧 Hidratação Ativa — Método RCF
 
-App PWA de acompanhamento ativo de hidratação para clientes da consultoria **Reconstrução do Corpo Feminino**.
+PWA de acompanhamento de hidratação para alunas da consultoria **Reconstrução do Corpo Feminino**.
 
----
+## Como funciona
 
-## ✨ Funcionalidades
+Cada aluna acessa o link, configura **seu próprio nome e peso** uma única vez, e usa o app individualmente no celular dela. Os dados ficam salvos localmente — cada pessoa vê apenas os seus.
 
-- **Meta personalizada** calculada pelo peso (35ml/kg — referência SBME)
-- **Divisão em turnos**: Manhã (40%) / Tarde (40%) / Noite (20%)
-- **Registro rápido** com doses pré-definidas: 150ml, 200ml, 250ml, 300ml, 500ml, 750ml
-- **Dose personalizada** para qualquer quantidade
-- **Acompanhamento ativo** com alertas do turno atual
-- **Histórico completo** por cliente e por data
-- **Multi-cliente**: cadastre todas as suas alunas
-- **Funciona offline** — PWA com Service Worker
-- **Instalável** no celular como app nativo (iOS e Android)
+## Funcionalidades
 
----
+- **Onboarding pessoal** — configura nome e peso na primeira abertura
+- **Meta automática** — 35ml × peso (referência SBME)
+- **3 turnos diários** — Manhã (40%) / Tarde (40%) / Noite (20%)
+- **Doses rápidas** — 150, 200, 250, 300, 500, 750ml + personalizado
+- **Histórico pessoal** com stats: dias registrados, metas atingidas, média geral
+- **Streak de dias** — contagem de dias consecutivos com meta atingida
+- **Perfil editável** — atualiza nome/peso a qualquer momento
+- **Funciona offline** (Service Worker + cache)
+- **Instalável** como app no celular (iOS e Android)
 
-## 🚀 Deploy no GitHub Pages
-
-### 1. Crie o repositório
+## Deploy no GitHub Pages
 
 ```bash
+# 1. Inicialize o repositório
 git init
 git add .
 git commit -m "feat: RCF Hidratação PWA"
-```
 
-Crie um repositório no GitHub (ex: `rcf-hidratacao`) e suba:
-
-```bash
+# 2. Suba para o GitHub
 git remote add origin https://github.com/SEU_USUARIO/rcf-hidratacao.git
 git branch -M main
 git push -u origin main
 ```
 
-### 2. Ative o GitHub Pages
+Depois: **Settings → Pages → Source: main / root → Save**
 
-1. Vá em **Settings** → **Pages**
-2. Em **Source**, selecione **Deploy from a branch**
-3. Selecione a branch `main` e pasta `/ (root)`
-4. Clique em **Save**
+URL final: `https://SEU_USUARIO.github.io/rcf-hidratacao/`
 
-Após alguns minutos, o app estará em:
-```
-https://SEU_USUARIO.github.io/rcf-hidratacao/
-```
+> Se o repositório não estiver na raiz do domínio, ajuste `start_url` e `scope` no `manifest.json` para `/rcf-hidratacao/` e os caminhos no `sw.js`.
 
-### 3. Atualize o manifest.json (se necessário)
+## Como as alunas instalam
 
-Se o repo não for a raiz do domínio, ajuste o `start_url` no `manifest.json`:
+**iPhone (Safari):** Compartilhar → Adicionar à Tela de Início
 
-```json
-"start_url": "/rcf-hidratacao/",
-"scope": "/rcf-hidratacao/"
-```
+**Android (Chrome):** Menu (3 pontos) → Instalar app
 
-E no `sw.js`, ajuste os caminhos dos assets:
-
-```js
-const ASSETS = [
-  '/rcf-hidratacao/',
-  '/rcf-hidratacao/index.html',
-  ...
-];
-```
-
----
-
-## 📱 Instalação do App (para as clientes)
-
-### iPhone (Safari)
-1. Abra o link no Safari
-2. Toque em **Compartilhar** (ícone de caixa com seta)
-3. Role para baixo e toque em **Adicionar à Tela de Início**
-4. Confirme o nome e toque em **Adicionar**
-
-### Android (Chrome)
-1. Abra o link no Chrome
-2. Toque nos **3 pontinhos** no canto superior direito
-3. Toque em **Instalar app** ou **Adicionar à tela inicial**
-4. Confirme
-
----
-
-## 📁 Estrutura do Projeto
+## Estrutura
 
 ```
 rcf-hidratacao/
-├── index.html       # App principal
-├── style.css        # Estilos (identidade RCF)
-├── app.js           # Lógica do app
-├── manifest.json    # Web App Manifest (PWA)
-├── sw.js            # Service Worker (offline)
-├── icons/           # Ícones do app em todos os tamanhos
-│   ├── icon-72.png
-│   ├── icon-96.png
-│   ├── icon-128.png
-│   ├── icon-144.png
-│   ├── icon-152.png
-│   ├── icon-192.png
-│   ├── icon-384.png
-│   └── icon-512.png
+├── index.html      — App completo
+├── style.css       — Identidade visual RCF
+├── app.js          — Lógica do app
+├── manifest.json   — Configuração PWA
+├── sw.js           — Service Worker (offline)
+├── icons/          — Ícones em 8 tamanhos
 └── README.md
 ```
 
 ---
-
-## 🔧 Dados e Privacidade
-
-Todos os dados são salvos **localmente** no dispositivo via `localStorage`. Nenhuma informação é enviada para servidores externos. Cada cliente usa o app no próprio celular e mantém seu histórico privado.
-
----
-
-## 📐 Referência Científica
-
-Meta de hidratação baseada na recomendação da **SBME** (Sociedade Brasileira de Medicina do Exercício e do Esporte): **35ml por kg de peso corporal** por dia.
-
----
-
 **Método RCF — Reconstrução do Corpo Feminino**
