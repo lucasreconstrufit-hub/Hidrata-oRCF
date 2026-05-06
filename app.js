@@ -1,21 +1,22 @@
 // ============================================================
-// RCF HIDRATAÇÃO ATIVA — app.js (Modelo A — uso pessoal)
+// RCF HIDRATAÇÃO ATIVA — app.js
 // ============================================================
 
 const TURNOS = [
-  { id: 'manha', label: 'Manhã',  icon: '🌅', time: '6h – 12h',  pct: 0.40 },
-  { id: 'tarde', label: 'Tarde',  icon: '☀️', time: '12h – 18h', pct: 0.40 },
-  { id: 'noite', label: 'Noite',  icon: '🌙', time: '18h – 23h', pct: 0.20 },
+  { id: 'manha', label: 'Manhã',  icon: '🌅', time: '6h – 12h',  pct: 0.40, hStart: 6,  hEnd: 12 },
+  { id: 'tarde', label: 'Tarde',  icon: '☀️', time: '12h – 18h', pct: 0.40, hStart: 12, hEnd: 18 },
+  { id: 'noite', label: 'Noite',  icon: '🌙', time: '18h – 23h', pct: 0.20, hStart: 18, hEnd: 24 },
 ];
 
 const DOSES_ML = [150, 200, 250, 300, 500, 750];
 
 // ============================================================
-// STATE — single user
+// STATE
 // ============================================================
 const ST = {
-  user: null,       // { name, weight, meta }
-  history: [],      // [{ date, meta, turnos: { manha, tarde, noite } }]
+  clients: [],
+  history: [],
+  activeId: null,
   todayEntry: null,
 };
 
@@ -23,38 +24,35 @@ const ST = {
 // PERSISTENCE
 // ============================================================
 function persist() {
-  try { localStorage.setItem('rcf_v4', JSON.stringify({ user: ST.user, history: ST.history })); } catch(e) {}
+  try { localStorage.setItem('rcf_v3', JSON.stringify(ST)); } catch(e) {}
 }
 
 function hydrate() {
   try {
-    const raw = localStorage.getItem('rcf_v4');
-    if (raw) {
-      const d = JSON.parse(raw);
-      if (d.user)    ST.user    = d.user;
-      if (d.history) ST.history = d.history;
-    }
+    const raw = localStorage.getItem('rcf_v3');
+    if (raw) Object.assign(ST, JSON.parse(raw));
   } catch(e) {}
 }
 
 // ============================================================
 // HELPERS
 // ============================================================
-function todayKey() { return new Date().toISOString().slice(0, 10); }
+function todayKey() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 function fmtDate(key) {
   const days = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const dt = new Date(key + 'T12:00:00');
   const [y, m, d] = key.split('-');
-  return `${days[dt.getDay()]}, ${d}/${m}`;
-}
-
-function fmtDateFull(key) {
-  const days = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-  const dt = new Date(key + 'T12:00:00');
-  const [y, m, d] = key.split('-');
   return `${days[dt.getDay()]}, ${d}/${m}/${y}`;
 }
+
+function getClient(id) { return ST.clients.find(c => c.id === id); }
 
 function initials(name) {
   return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
@@ -65,7 +63,7 @@ function curTurno() {
   if (h >= 6  && h < 12) return 'manha';
   if (h >= 12 && h < 18) return 'tarde';
   if (h >= 18) return 'noite';
-  return 'manha'; // madrugada → trata como manhã
+  return 'manha';
 }
 
 function totalConsumed(entry) {
@@ -81,64 +79,20 @@ function pctColor(pct) {
 
 function turnoIdx(id) { return TURNOS.findIndex(t => t.id === id); }
 
-function consecutiveDays() {
-  if (!ST.history.length) return 0;
-  const sorted = ST.history
-    .filter(h => totalConsumed(h) >= h.meta)
-    .map(h => h.date)
-    .sort((a, b) => b.localeCompare(a));
-  if (!sorted.length) return 0;
-  let streak = 0;
-  let cursor = new Date();
-  cursor.setHours(12, 0, 0, 0);
-  for (const dateStr of sorted) {
-    const d = new Date(dateStr + 'T12:00:00');
-    const diff = Math.round((cursor - d) / 86400000);
-    if (diff === 0 || diff === 1) {
-      streak++;
-      cursor = d;
-    } else {
-      break;
-    }
-  }
-  return streak;
-}
-
-// ============================================================
-// ONBOARDING
-// ============================================================
-function obPreview() {
-  const w    = parseFloat(document.getElementById('ob-weight').value);
-  const prev = document.getElementById('ob-preview');
-  if (w > 0) {
-    prev.classList.add('show');
-    document.getElementById('ob-preview-val').textContent = Math.round(w * 35).toLocaleString('pt-BR') + 'ml';
-  } else {
-    prev.classList.remove('show');
-  }
-}
-
-function obSave() {
-  const name   = (document.getElementById('ob-name').value || '').trim();
-  const weight = parseFloat(document.getElementById('ob-weight').value);
-  if (!name || name.length < 2)          { toast('Informe seu nome', 'red'); return; }
-  if (!weight || weight < 20 || weight > 300) { toast('Peso inválido', 'red'); return; }
-  ST.user = { name, weight, meta: Math.round(weight * 35) };
-  persist();
-  boot();
-}
-
 // ============================================================
 // ENSURE TODAY ENTRY
 // ============================================================
 function ensureToday() {
-  if (!ST.user) return;
-  const key   = todayKey();
-  let entry   = ST.history.find(h => h.date === key);
+  if (!ST.activeId) return;
+  const cl = getClient(ST.activeId);
+  if (!cl) return;
+  const key = todayKey();
+  let entry = ST.history.find(h => h.clientId === ST.activeId && h.date === key);
   if (!entry) {
     entry = {
+      clientId: ST.activeId,
       date: key,
-      meta: ST.user.meta,
+      meta: Math.round(cl.weight * 35),
       turnos: {
         manha: { consumed: 0, done: false },
         tarde: { consumed: 0, done: false },
@@ -167,12 +121,12 @@ function addDose(turnoId, ml) {
     toast(`+${ml}ml adicionado!`, 'green');
   }
   persist();
-  renderToday();
+  renderTracker();
 }
 
 function addCustom(turnoId) {
   const inp = document.getElementById('custom-input-' + turnoId);
-  const v   = parseInt(inp.value);
+  const v = parseInt(inp.value);
   if (!v || v <= 0 || v > 3000) { toast('Valor inválido (max 3000ml)', 'red'); return; }
   addDose(turnoId, v);
   inp.value = '';
@@ -182,40 +136,37 @@ function markDone(turnoId) {
   if (!ST.todayEntry) return;
   ST.todayEntry.turnos[turnoId].done = true;
   persist();
-  renderToday();
+  renderTracker();
   toast('Turno concluído! 💪', 'green');
 }
 
-// ============================================================
-// RENDER: HEADER
-// ============================================================
-function renderHeader() {
-  const firstName = ST.user.name.split(' ')[0];
-  document.getElementById('header-greeting').textContent = `Olá, ${firstName}!`;
-  const streak = consecutiveDays();
-  const metaEl = document.getElementById('header-meta');
-  metaEl.innerHTML = streak > 0
-    ? `🔥 ${streak} dia${streak > 1 ? 's' : ''}<br><span style="font-size:9px;color:var(--rcf-muted);letter-spacing:0.06em">seguidos</span>`
-    : `${ST.user.meta.toLocaleString('pt-BR')}ml<br><span style="font-size:9px;color:var(--rcf-muted);letter-spacing:0.06em">meta/dia</span>`;
+function selectClient(id) {
+  ST.activeId = id;
+  ensureToday();
+  persist();
+  renderAll();
+  nav('hoje', document.querySelectorAll('.nav-tab')[0]);
+  toast('Aluno(a) selecionado(a)!', 'green');
 }
 
 // ============================================================
-// RENDER: TODAY
+// RENDER: TRACKER
 // ============================================================
-function renderToday() {
-  const entry  = ST.todayEntry;
-  if (!entry) return;
+function renderTracker() {
+  const noC = document.getElementById('no-client');
+  const tr  = document.getElementById('tracker');
 
-  document.getElementById('today-label').textContent = fmtDateFull(todayKey());
-
-  const streak = consecutiveDays();
-  const streakEl = document.getElementById('day-streak');
-  if (streak >= 2) {
-    streakEl.textContent = `🔥 ${streak} dias`;
-    streakEl.style.display = '';
-  } else {
-    streakEl.style.display = 'none';
+  if (!ST.activeId) {
+    noC.style.display = ''; tr.style.display = 'none'; return;
   }
+  noC.style.display = 'none'; tr.style.display = '';
+
+  const cl    = getClient(ST.activeId);
+  const entry = ST.todayEntry;
+  if (!cl || !entry) return;
+
+  document.getElementById('today-label').textContent = fmtDate(todayKey());
+  document.getElementById('active-chip').textContent  = cl.name.split(' ')[0].toUpperCase();
 
   const total  = totalConsumed(entry);
   const meta   = entry.meta;
@@ -252,13 +203,13 @@ function renderToday() {
   const alertBox = document.getElementById('alert-box');
 
   if (pct >= 100) {
-    alertBox.innerHTML = `<div class="alert green">🏆 Meta do dia atingida! Excelente hidratação!</div>`;
+    alertBox.innerHTML = `<div class="alert green">🏆 Meta do dia atingida! Excelente hidratação hoje!</div>`;
   } else if (curEntry.done) {
     alertBox.innerHTML = `<div class="alert green">✓ Turno ${curInfo.icon} ${curInfo.label} concluído! Avance para o próximo.</div>`;
   } else if (curFalt <= 0) {
-    alertBox.innerHTML = `<div class="alert yellow">Turno ${curInfo.label}: meta atingida! Marque como concluído.</div>`;
+    alertBox.innerHTML = `<div class="alert yellow">Turno ${curInfo.label}: meta do turno atingida! Marque como concluído.</div>`;
   } else {
-    alertBox.innerHTML = `<div class="alert red">⏰ ${curInfo.icon} Turno <strong>${curInfo.label}</strong>: faltam <strong>${curFalt.toLocaleString('pt-BR')}ml</strong></div>`;
+    alertBox.innerHTML = `<div class="alert red">⏰ ${curInfo.icon} Turno <strong>${curInfo.label}</strong>: faltam <strong>${curFalt.toLocaleString('pt-BR')}ml</strong> para a meta deste turno.</div>`;
   }
 
   // Turnos
@@ -272,13 +223,13 @@ function renderToday() {
     const isDone   = te.done;
     const col      = isDone ? 'var(--green)' : pctColor(tPct);
 
-    let badge = '';
-    if (isDone)        badge = `<span class="badge badge-green">✓ Concluído</span>`;
-    else if (isActive) badge = `<span class="badge badge-red">● Ativo</span>`;
-    else if (isPast)   badge = `<span class="badge badge-yellow">Incompleto</span>`;
+    let badgeHtml = '';
+    if (isDone)        badgeHtml = `<span class="badge badge-green">✓ Concluído</span>`;
+    else if (isActive) badgeHtml = `<span class="badge badge-red">● Ativo</span>`;
+    else if (isPast)   badgeHtml = `<span class="badge badge-yellow">Incompleto</span>`;
 
-    const doses = DOSES_ML.map(d =>
-      `<button class="dose-btn" onclick="addDose('${t.id}',${d})">${d >= 1000 ? (d/1000)+'L' : d+'ml'}</button>`
+    const dosesHtml = DOSES_ML.map(d =>
+      `<button class="dose-btn" onclick="addDose('${t.id}',${d})">${d >= 1000 ? (d/1000) + 'L' : d + 'ml'}</button>`
     ).join('');
 
     const markBtn = !isDone && (isActive || isPast)
@@ -290,14 +241,14 @@ function renderToday() {
         <span style="font-size:16px">${t.icon}</span>
         <span class="turno-name">${t.label}</span>
         <span class="turno-time">${t.time}</span>
-        ${badge}
+        ${badgeHtml}
       </div>
       <div class="bar-track"><div class="bar-fill" style="width:${tPct}%;background:${col}"></div></div>
       <div class="turno-stat">
-        <span><strong>${(te.consumed||0).toLocaleString('pt-BR')}ml</strong> de ${tMeta.toLocaleString('pt-BR')}ml</span>
+        <span><strong>${(te.consumed || 0).toLocaleString('pt-BR')}ml</strong> de ${tMeta.toLocaleString('pt-BR')}ml</span>
         <span><strong>${tPct}%</strong></span>
       </div>
-      <div class="dose-grid">${doses}</div>
+      <div class="dose-grid">${dosesHtml}</div>
       <div class="dose-input-row">
         <input type="number" id="custom-input-${t.id}" placeholder="Outro (ml)" min="1" max="3000">
         <button class="btn-primary" style="width:auto;padding:10px 14px;font-size:12px" onclick="addCustom('${t.id}')">+ Add</button>
@@ -311,28 +262,27 @@ function renderToday() {
 // RENDER: HISTORICO
 // ============================================================
 function renderHist() {
-  const items = [...ST.history].sort((a, b) => b.date.localeCompare(a.date));
+  const sel  = document.getElementById('h-filter');
+  const curV = sel.value;
+  sel.innerHTML = '<option value="">Todas as alunos(as)</option>';
+  ST.clients.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c.id; o.textContent = c.name; sel.appendChild(o);
+  });
+  sel.value = curV;
 
-  // Summary stats
-  const total  = items.length;
-  const metas  = items.filter(h => totalConsumed(h) >= h.meta).length;
-  const avgPct = total
-    ? Math.round(items.reduce((s, h) => s + Math.min(100, totalConsumed(h) / h.meta * 100), 0) / total)
-    : 0;
-
-  document.getElementById('hist-summary').innerHTML = `
-    <div class="stat-box"><div class="stat-box-val">${total}</div><div class="stat-box-lbl">Dias registrados</div></div>
-    <div class="stat-box"><div class="stat-box-val" style="color:var(--green)">${metas}</div><div class="stat-box-lbl">Metas atingidas</div></div>
-    <div class="stat-box"><div class="stat-box-val">${avgPct}%</div><div class="stat-box-lbl">Média geral</div></div>
-  `;
+  const items = ST.history
+    .filter(h => !sel.value || h.clientId === sel.value)
+    .sort((a, b) => b.date.localeCompare(a.date));
 
   const list = document.getElementById('hist-list');
   if (!items.length) {
-    list.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><p>Nenhum registro ainda.<br>Comece a registrar hoje!</p></div>`;
+    list.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><p>Nenhum registro encontrado.</p></div>`;
     return;
   }
 
   list.innerHTML = items.map(h => {
+    const cl  = getClient(h.clientId);
     const tot = totalConsumed(h);
     const pct = Math.min(100, Math.round(tot / h.meta * 100));
     const col = pctColor(pct);
@@ -341,7 +291,8 @@ function renderHist() {
     return `<div class="hist-item" onclick='openHistDetail(${JSON.stringify(h)})'>
       <div class="hist-top">
         <div>
-          <div class="hist-date">${fmtDateFull(h.date)}</div>
+          <div class="hist-date">${fmtDate(h.date)}</div>
+          <div class="hist-client">${cl ? cl.name : '—'}</div>
         </div>
         <div>
           <div class="hist-pct" style="color:${col}">${pct}%</div>
@@ -355,19 +306,42 @@ function renderHist() {
 }
 
 // ============================================================
-// RENDER: PERFIL
+// RENDER: CLIENTES
 // ============================================================
-function renderPerfil() {
-  const u = ST.user;
-  document.getElementById('perfil-avatar').textContent = initials(u.name);
-  document.getElementById('perfil-name').textContent   = u.name;
-  document.getElementById('perfil-sub').textContent    = `${u.weight}kg · Meta: ${u.meta.toLocaleString('pt-BR')}ml/dia`;
+function renderClients() {
+  const list = document.getElementById('clients-list');
+  if (!ST.clients.length) {
+    list.innerHTML = `<div class="empty"><div class="empty-icon">👩</div><p>Nenhum(a) aluno(a) cadastrado(a).<br>Toque em <strong style="color:var(--rcf-red)">+ Aluno(a)</strong> para começar.</p></div>`;
+    return;
+  }
+  list.innerHTML = ST.clients.map(c => {
+    const days     = ST.history.filter(h => h.clientId === c.id && totalConsumed(h) >= h.meta).length;
+    const isActive = ST.activeId === c.id;
+    return `<div class="client-item ${isActive ? 'selected' : ''}" onclick="selectClient('${c.id}')">
+      <div class="avatar">${initials(c.name)}</div>
+      <div class="client-info">
+        <div class="client-name-text">${c.name}</div>
+        <div class="client-sub">${c.weight}kg · Meta: ${Math.round(c.weight * 35).toLocaleString('pt-BR')}ml/dia</div>
+        ${isActive ? `<div style="font-size:10px;margin-top:3px;color:var(--rcf-red)"><span class="active-dot"></span>Selecionado(a)</div>` : ''}
+      </div>
+      <div class="client-right">
+        <div class="client-streak">${days}<small>metas atingidas</small></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderAll() {
+  renderTracker();
+  renderHist();
+  renderClients();
 }
 
 // ============================================================
 // MODAL: HIST DETAIL
 // ============================================================
 function openHistDetail(h) {
+  const cl  = getClient(h.clientId);
   const tot = totalConsumed(h);
   const pct = Math.min(100, Math.round(tot / h.meta * 100));
   const col = pctColor(pct);
@@ -383,7 +357,8 @@ function openHistDetail(h) {
   }).join('');
 
   openSheet(`
-    <div class="sheet-title">${fmtDateFull(h.date)}</div>
+    <div class="sheet-title">${fmtDate(h.date)}</div>
+    <div style="font-size:12px;color:var(--rcf-muted);margin-bottom:14px;letter-spacing:0.06em;text-transform:uppercase">${cl ? cl.name : '—'}</div>
     ${rows}
     <div class="detail-row" style="border-top:1px solid var(--rcf-red);margin-top:4px;padding-top:12px">
       <strong>Total do dia</strong>
@@ -394,67 +369,52 @@ function openHistDetail(h) {
 }
 
 // ============================================================
-// MODAL: EDIT PERFIL
+// MODAL: NEW CLIENT
 // ============================================================
-function openEditPerfil() {
+function openNewClient() {
   openSheet(`
-    <div class="sheet-title">Editar Perfil</div>
-    <label>Seu nome</label>
-    <input type="text" id="ep-name" value="${ST.user.name}" autocapitalize="words">
-    <label>Seu peso atual (kg)</label>
-    <input type="number" id="ep-weight" value="${ST.user.weight}" min="30" max="250" oninput="epPreview()">
-    <div class="meta-preview show" id="ep-preview">
-      <span class="meta-preview-label">Nova meta diária</span>
-      <span class="meta-preview-val" id="ep-preview-val">${ST.user.meta.toLocaleString('pt-BR')}ml</span>
+    <div class="sheet-title">Novo(a) Aluno(a)</div>
+    <label>Nome completo</label>
+    <input type="text" id="nc-name" placeholder="Ex: Ana Carolina Silva" autocomplete="off">
+    <label>Peso atual (kg)</label>
+    <input type="number" id="nc-weight" placeholder="Ex: 65" min="30" max="250" oninput="previewMeta()">
+    <div class="meta-preview" id="meta-prev">
+      <span class="meta-preview-label">Meta diária estimada</span>
+      <span class="meta-preview-val" id="meta-prev-val">—</span>
     </div>
     <div class="btn-row">
       <button class="btn-secondary" onclick="closeSheet()">Cancelar</button>
-      <button class="btn-primary" onclick="savePerfil()">Salvar</button>
+      <button class="btn-primary" onclick="saveClient()">Salvar</button>
     </div>
   `);
 }
 
-function epPreview() {
-  const w = parseFloat(document.getElementById('ep-weight').value);
-  if (w > 0) document.getElementById('ep-preview-val').textContent = Math.round(w * 35).toLocaleString('pt-BR') + 'ml';
+function previewMeta() {
+  const w    = parseFloat(document.getElementById('nc-weight').value);
+  const prev = document.getElementById('meta-prev');
+  if (w > 0) {
+    prev.classList.add('show');
+    document.getElementById('meta-prev-val').textContent = Math.round(w * 35).toLocaleString('pt-BR') + 'ml';
+  } else {
+    prev.classList.remove('show');
+  }
 }
 
-function savePerfil() {
-  const name   = (document.getElementById('ep-name').value || '').trim();
-  const weight = parseFloat(document.getElementById('ep-weight').value);
-  if (!name || name.length < 2)              { toast('Informe seu nome', 'red'); return; }
-  if (!weight || weight < 20 || weight > 300){ toast('Peso inválido', 'red'); return; }
-  ST.user = { name, weight, meta: Math.round(weight * 35) };
-  // Update today's meta too
-  if (ST.todayEntry) ST.todayEntry.meta = ST.user.meta;
+function saveClient() {
+  const name   = (document.getElementById('nc-name').value || '').trim();
+  const weight = parseFloat(document.getElementById('nc-weight').value);
+  if (!name || name.length < 2)          { toast('Informe o nome completo', 'red'); return; }
+  if (!weight || weight < 20 || weight > 300) { toast('Peso inválido', 'red'); return; }
+  const c = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+    name,
+    weight,
+  };
+  ST.clients.push(c);
   persist();
   closeSheet();
-  renderHeader();
-  renderPerfil();
-  renderToday();
-  toast('Perfil atualizado! ✓', 'green');
-}
-
-// ============================================================
-// CONFIRM RESET
-// ============================================================
-function confirmReset() {
-  openSheet(`
-    <div class="sheet-title" style="color:var(--rcf-red)">⚠️ Resetar Dados</div>
-    <p style="font-size:14px;color:var(--rcf-muted);line-height:1.6;margin-bottom:20px">
-      Isso apagará <strong style="color:var(--rcf-white)">todo o seu histórico e perfil</strong> permanentemente. Esta ação não pode ser desfeita.
-    </p>
-    <div class="btn-row">
-      <button class="btn-secondary" onclick="closeSheet()">Cancelar</button>
-      <button class="btn-primary" style="background:var(--rcf-red)" onclick="resetAll()">Apagar tudo</button>
-    </div>
-  `);
-}
-
-function resetAll() {
-  try { localStorage.removeItem('rcf_v4'); } catch(e) {}
-  closeSheet();
-  location.reload();
+  renderClients();
+  toast('Aluno(a) cadastrado(a)! ✓', 'green');
 }
 
 // ============================================================
@@ -482,7 +442,7 @@ function nav(id, tab) {
   document.getElementById('page-' + id).classList.add('active');
   if (tab) tab.classList.add('active');
   if (id === 'historico') renderHist();
-  if (id === 'perfil')    renderPerfil();
+  if (id === 'clientes')  renderClients();
 }
 
 // ============================================================
@@ -520,34 +480,23 @@ function installPWA() {
 
 window.addEventListener('appinstalled', () => {
   toast('App instalado com sucesso! 🎉', 'green');
+  deferredPrompt = null;
 });
 
 // ============================================================
-// SERVICE WORKER
+// SERVICE WORKER REGISTRATION
 // ============================================================
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js')
+      .then(() => console.log('[RCF] Service Worker registrado'))
+      .catch(err => console.warn('[RCF] SW falhou:', err));
   });
 }
 
 // ============================================================
 // BOOT
 // ============================================================
-function boot() {
-  if (!ST.user) {
-    // Show onboarding
-    document.getElementById('onboarding').style.display = '';
-    document.getElementById('app').style.display = 'none';
-  } else {
-    // Show app
-    document.getElementById('onboarding').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
-    ensureToday();
-    renderHeader();
-    renderToday();
-  }
-}
-
 hydrate();
-boot();
+ensureToday();
+renderAll();
