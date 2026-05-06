@@ -1,88 +1,98 @@
-// ============================================================
-// RCF HIDRATAÇÃO ATIVA — Service Worker
-// ============================================================
-
-const CACHE_NAME = 'rcf-hidratacao-v1';
+// RCF Hidratação — Service Worker v2
+// Incrementar CACHE_NAME força a limpeza do cache antigo em todos os dispositivos
+const CACHE_NAME = 'rcf-v5';
 
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/app.js',
-  '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap',
+  './',
+  './index.html',
+  './style.css',
+  './app.js',
+  './manifest.json',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
 ];
 
-// ============================================================
-// INSTALL — cache all assets
-// ============================================================
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS).catch((err) => {
-        console.warn('[SW] Falha ao cachear alguns assets:', err);
-      });
-    })
+// INSTALL — cacheia assets novos
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(c => c.addAll(ASSETS).catch(() => {}))
   );
+  // Força ativação imediata sem esperar abas fecharem
   self.skipWaiting();
 });
 
-// ============================================================
-// ACTIVATE — clean old caches
-// ============================================================
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
+// ACTIVATE — apaga TODOS os caches antigos (incluindo rcf-hidratacao-v1, rcf-v4, etc.)
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
       Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
+        keys.filter(k => k !== CACHE_NAME).map(k => {
+          console.log('[SW] Deletando cache antigo:', k);
+          return caches.delete(k);
+        })
       )
-    )
+    ).then(() => {
+      // Toma controle de todas as abas abertas imediatamente
+      return self.clients.claim();
+    })
   );
-  self.clients.claim();
 });
 
-// ============================================================
-// FETCH — cache-first for assets, network-first for navigation
-// ============================================================
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
+// FETCH — network-first para HTML (sempre pega versão nova), cache-first para assets
+self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
 
-  // Skip non-GET
-  if (request.method !== 'GET') return;
+  const url = new URL(e.request.url);
 
-  // Skip Chrome extensions
-  if (url.protocol === 'chrome-extension:') return;
+  // Ignora extensões chrome e outros protocolos
+  if (!url.protocol.startsWith('http')) return;
 
-  // Navigation: network-first, fallback to cache
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((res) => {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          return res;
-        })
-        .catch(() => caches.match('/index.html'))
+  // Fontes Google — cache-first
+  if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
+    e.respondWith(
+      caches.match(e.request).then(cached => cached || fetch(e.request))
     );
     return;
   }
 
-  // Assets: cache-first
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request).then((res) => {
-        if (res && res.status === 200) {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+  // Navegação (HTML) — network-first, fallback para cache
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request)
+        .then(r => {
+          const clone = r.clone();
+          caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+          return r;
+        })
+        .catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+
+  // JS e CSS — network-first para garantir atualizações
+  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+    e.respondWith(
+      fetch(e.request)
+        .then(r => {
+          const clone = r.clone();
+          caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+          return r;
+        })
+        .catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // Demais assets — cache-first
+  e.respondWith(
+    caches.match(e.request).then(cached =>
+      cached || fetch(e.request).then(r => {
+        if (r && r.status === 200) {
+          const clone = r.clone();
+          caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
         }
-        return res;
-      });
-    })
+        return r;
+      })
+    )
   );
 });
