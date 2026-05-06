@@ -700,3 +700,63 @@ input:focus, select:focus { border-color: var(--rcf-red); }
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--rcf-gray-light); border-radius: 2px; }
+
+/* ===== UNDO / REMOVE ROW ===== */
+.undo-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.btn-undo {
+  flex: 1;
+  background: transparent;
+  border: 1px solid var(--rcf-gray-light);
+  border-radius: 7px;
+  color: var(--rcf-muted);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 8px 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.btn-undo:hover:not(:disabled) {
+  color: var(--yellow);
+  border-color: rgba(230,172,0,0.4);
+  background: rgba(230,172,0,0.06);
+}
+
+.btn-undo:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ===== DANGER CARD ===== */
+.danger-card {
+  border-color: rgba(204,0,0,0.25) !important;
+}
+
+.btn-danger {
+  width: 100%;
+  background: transparent;
+  color: #FF6666;
+  border: 1px solid rgba(204,0,0,0.4);
+  border-radius: 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-danger:hover {
+  background: rgba(204,0,0,0.1);
+  border-color: rgba(204,0,0,0.6);
+}
